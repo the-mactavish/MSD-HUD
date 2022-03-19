@@ -144,6 +144,7 @@ end
 
 local notifications = {}
 local inventory = {}
+
 local note_style = {
 	[NOTIFY_ERROR] = {icon = MSD.Icons48.cross, color = Color(204, 15, 40)},
 	[NOTIFY_UNDO] = {icon = MSD.Icons48.back, color = Color(54, 139, 230)},
@@ -151,6 +152,9 @@ local note_style = {
 	[NOTIFY_GENERIC] = {icon = MSD.Icons48.cog, color = Color(226, 147, 0)},
 	[NOTIFY_CLEANUP] = {icon = MSD.Icons48.box_open, color = Color(128, 189, 255)},
 	["loading"] = {icon = MSD.Icons48.reload, color = Color(95, 219, 13)},
+	["weapon"] = {icon = Material("mqs/icons/pistol.png", "smooth"), color = Color(226, 147, 0)},
+	["ammo"] = {icon = MSD.Icons48.ammo, color = Color(0, 123, 255)},
+	["item"] = {icon = MSD.Icons48.box_open, color = Color(161, 216, 88)}
 }
 
 function notification.AddLegacy(text, type, time, id)
@@ -170,11 +174,12 @@ end
 
 function notification.AddInventory(text, type, time)
 	table.insert(inventory, {
-		x = 0,
-		y = 0,
-		w = 10,
+		x = ScrW(),
+		y = ScrH() - (20 + HUD.IconSize) * 2,
+		w = 100,
 		h = 10 + HUD.IconSize,
 		s = sub,
+		progress = 0,
 		text = text,
 		type = type,
 		time = CurTime() + time,
@@ -231,6 +236,30 @@ function HUD.DrawNotifications()
 			table.remove(notifications, k)
 		end
 	end
+
+	for k, v in ipairs(inventory) do
+		local is = math.max(MSD.Config.Rounded, 5)
+		local n_locor = note_style[v.type] and note_style[v.type].color or color_white
+
+		draw.RoundedBox(MSD.Config.Rounded, v.x - (v.progress * v.w) - 10, v.y - (k - 1) * (v.h + 5), v.w, v.h, MSD.ColorAlpha(MSD.Theme["d"], 155 * v.progress))
+		v.w = draw.SimpleText( v.text, "MSDFont.22", v.x - (v.progress * v.w) + 10 + HUD.IconSize - is, (v.y - (k - 1) * (v.h + 5)) + HUD.IconSize / 2 + 5, color_white, TEXT_ALIGN_LEFT, 1 ) + 25 + HUD.IconSize
+
+		if note_style[v.type] then
+			MSD.DrawTexturedRect(v.x - (v.progress * v.w) + 5 - is, (v.y - (k - 1) * (v.h + 5)) + 5, HUD.IconSize, HUD.IconSize, note_style[v.type].icon, note_style[v.type].color)
+		end
+
+		draw.RoundedBoxEx(MSD.Config.Rounded, v.x + (v.w - (v.progress * v.w)) - is - 10, v.y - (k - 1) * (v.h + 5), is, v.h, MSD.ColorAlpha(n_locor, 255 * v.progress), true, false, true, false)
+
+		if v.time > CurTime() then
+			v.progress = math.Approach(v.progress, 1, FrameTime() * 5)
+		else
+			v.progress = math.Approach(v.progress, 0, FrameTime() * 4)
+		end
+
+		if v.progress <= 0 and v.time < CurTime() then
+			table.remove(inventory, k)
+		end
+	end
 end
 
 hook.Add("HUDPaint", "MSD.HUD.HUDPaint", function()
@@ -266,23 +295,22 @@ end
 
 HUD.UpdateHookInfo()
 
-
 hook.Add("PostGamemodeLoaded", "MSD.HUD.PostGamemodeLoaded", function()
-	-- function GAMEMODE:HUDWeaponPickedUp(wep)
-	-- 	if not (IsValid(wep) and IsValid(LocalPlayer())) or (not LocalPlayer():Alive()) then return end
-	-- 	local name = wep.GetPrintName and wep:GetPrintName() or wep:GetClass() or "Unknown Weapon Name"
-	-- 	notification.AddInventory(name, 1, 5, true)
-	-- end
+	function GAMEMODE:HUDWeaponPickedUp(wep)
+		if not (IsValid(wep) and IsValid(LocalPlayer())) or (not LocalPlayer():Alive()) then return end
+		local name = wep.GetPrintName and wep:GetPrintName() or wep:GetClass() or "Unknown Weapon Name"
+		notification.AddInventory(name, "weapon", 5, true)
+	end
 
-	-- function GAMEMODE:HUDItemPickedUp(itemname)
-	-- 	if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
-	-- 	notification.AddInventory(language.GetPhrase(itemname), 2, 5, true)
-	-- end
+	function GAMEMODE:HUDItemPickedUp(itemname)
+		if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
+		notification.AddInventory(language.GetPhrase(itemname), "item", 5, true)
+	end
 
-	-- function GAMEMODE:HUDAmmoPickedUp(itemname, amount)
-	-- 	if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
-	-- 	notification.AddInventory(language.GetPhrase(itemname .. "_ammo") .. " " .. amount, 3, 5, true)
-	-- end
+	function GAMEMODE:HUDAmmoPickedUp(itemname, amount)
+		if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
+		notification.AddInventory(language.GetPhrase(itemname .. "_ammo") .. " " .. amount, "ammo", 5, true)
+	end
 
 	function GAMEMODE.DrawDeathNotice()
 	end
