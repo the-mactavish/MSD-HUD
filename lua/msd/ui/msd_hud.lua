@@ -6,10 +6,9 @@ HUD.IconSize = 32
 HUD.BarSize = 0
 HUD.WepBarSize = 0
 HUD.AnimatedBars = {}
-HUD.AnimatedBars = {}
+HUD.TextBars = {}
 
 HUD.AnimatedBars[1] = {
-	-- check
 	icon_bg = MSD.Icons48.heart_outline,
 	icon = MSD.Icons48.heart,
 	max_icon = MSD.Icons48.heart_flash,
@@ -21,7 +20,6 @@ HUD.AnimatedBars[1] = {
 }
 
 HUD.AnimatedBars[2] = {
-	-- check
 	icon_bg = MSD.Icons48.armor_outline,
 	icon = MSD.Icons48.armor,
 	max_icon = MSD.Icons48.armor_flash,
@@ -29,6 +27,28 @@ HUD.AnimatedBars[2] = {
 	smooth = 0,
 	value = function()
 		return LocalPlayer():Armor() / LocalPlayer():GetMaxArmor()
+	end
+}
+
+HUD.TextBars[1] = {
+	check = function()
+		return DarkRP and true or false
+	end,
+	icon = MSD.Icons48.briefcase,
+	text = function()
+		return LocalPlayer():getDarkRPVar("job") or ""
+	end
+}
+
+HUD.TextBars[2] = {
+	check = function()
+		return DarkRP and true or false
+	end,
+	icon = MSD.Icons48.cash,
+	text = function()
+		local money = LocalPlayer():getDarkRPVar("money") or 0
+		local sal = LocalPlayer():getDarkRPVar("salary") or 0
+		return string.Comma(money) .. "$" .. (sal > 0 and " + " .. string.Comma(sal) .. "$" or "")
 	end
 }
 
@@ -70,7 +90,13 @@ function HUD.DrawBar(x, y)
 		end
 	end
 
+	for id, e in pairs(HUD.TextBars) do
+		if e.check and not e.check() then continue end
 
+		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, e.icon, color_white)
+		b = b + HUD.IconSize + 5
+		b = b + 5 + draw.SimpleText( e.text(), "MSDFont.22", x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
+	end
 	-- if DarkRP then
 
 	-- 	MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, MSD.Icons48.briefcase, MSD.Text["d"])
