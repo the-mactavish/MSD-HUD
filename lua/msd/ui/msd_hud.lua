@@ -3,7 +3,7 @@ MSD.HUD = MSD.HUD or {}
 local HUD = MSD.HUD
 
 HUD.IconSize = ScreenScale(12) -- Scales hud to your screen. You can set a fixed value if you want (not recomended), just replace the ScreenScale(12) with 32 and it will set icons to a fixed value.
-HUD.FondSize = math.Clamp(math.Round(HUD.IconSize / 4 + 10), 12, 52) -- Fond size for MSD can varry from 12 to 52.
+HUD.FondSize = math.Clamp(math.Round(HUD.IconSize / 4 + 12), 12, 52) -- Fond size for MSD can varry from 12 to 52.
 
 HUD.BarSize = 0
 HUD.WepBarSize = 0
@@ -89,6 +89,33 @@ HUD.TextBars[3] = {
 	icon = MSD.Icons48.file_document,
 }
 
+-- HUD.TextBars[4] = {
+-- 	check = function()
+-- 		if MRS and MRS.GetNWdata(LocalPlayer(), "Group") then
+-- 			return true
+-- 		end
+-- 		return false
+-- 	end,
+-- 	icon = function()
+-- 		local group = MRS.GetNWdata(LocalPlayer(), "Group")
+-- 		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
+-- 		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return MSD.Icons48.cansel end
+-- 		if rank > 0 then
+-- 			rank = MRS.Ranks[group].ranks[rank]
+-- 		end
+-- 		if rank ~= 0 and rank.icon[1] and rank.icon[1] ~= "" then
+-- 			return MRS.GetRankIcon(rank.icon)
+-- 		end
+-- 		return MSD.Icons48.file_document
+-- 	end,
+-- 	text = function()
+-- 		local group = MRS.GetNWdata(LocalPlayer(), "Group")
+-- 		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
+-- 		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return "None" end
+-- 		return MRS.Ranks[group].ranks[rank].name
+-- 	end
+-- }
+
 local blur = Material("pp/blurscreen")
 
 function HUD.Blur(x, y, w, h)
@@ -158,8 +185,7 @@ function HUD.DrawBar(x, y)
 
 	for id, e in pairs(HUD.TextBars) do
 		if e.check and not e.check() then continue end
-
-		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, e.icon, color_white)
+		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, isfunction(e.icon) and e.icon() or e.icon, color_white)
 		b = b + HUD.IconSize + 5
 		if e.text then
 			b = b + 5 + draw.SimpleText( e.text(), "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
