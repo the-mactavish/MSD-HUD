@@ -1,3 +1,27 @@
+local ScreenScale = ScreenScale
+local math = math
+local LocalPlayer = LocalPlayer
+local string = string
+local Material = Material
+local surface = surface
+local render = render
+local ScrW = ScrW
+local ScrH = ScrH
+local draw = draw
+local MSD = MSD
+local pairs = pairs
+local FrameTime = FrameTime
+local isfunction = isfunction
+local IsValid = IsValid
+local Color = Color
+local table = table
+local CurTime = CurTime
+local ipairs = ipairs
+local notification = notification
+local hook = hook
+local GetConVar = GetConVar
+local language = language
+
 MSD.HUD = MSD.HUD or {}
 
 local HUD = MSD.HUD
@@ -7,13 +31,21 @@ HUD.FondSize = math.Clamp(math.Round(HUD.IconSize / 4 + 12), 12, 52) -- Fond siz
 
 HUD.BarSize = 0
 HUD.WepBarSize = 0
-HUD.AnimatedBars = {}
-HUD.TextBars = {}
+HUD.Bars = {}
+
+function HUD.AddAnimatedBar(tbl)
+	table.insert(HUD.Bars, tbl)
+end
+
+function HUD.AddTextBar(tbl)
+	tbl.type = "text"
+	table.insert(HUD.Bars, tbl)
+end
 
 --[[---------- HOW TO ADD CUSTOM BARS ------------
-	Animated Bars - add new item to the HUD.AnimatedBars table
+	Animated Bars
 
-	HUD.AnimatedBars[ CHANGE_ID ] = {  -- IDs must go from 1 to above. ID number will effect order of bars. Lower numbers come first
+	HUD.AddAnimatedBar({  -- Order of adding will effect order of bars
 		check = function() return true end, -- add it only if you need to check for something, if false or nil is returned by this function will hide the bar element
 		icon_bg = Material("path/to/your/icon.png", "smooth"), -- Background icon, you will see it if % is lower than 100
 		icon = Material("path/to/your/icon.png", "smooth"), -- Main icon
@@ -23,19 +55,19 @@ HUD.TextBars = {}
 		value = function() -- value function, must return a value from 0 to 1 (representing %)
 			return LocalPlayer():Health() / LocalPlayer():GetMaxHealth() -- example, current player health divided to maximum player health
 		end
-	}
+	})
 
-	Text Bars - add new item to the HUD.TextBars table
-	HUD.TextBars[ CHANGE_ID ] = { -- IDs must go from 1 to above. ID number will effect order of bars. Lower numbers come first
+	Text Bars
+	HUD.AddTextBar({ -- Order of adding will effect order of bars
 		check = function() return true end, -- add it only if you need to check for something, if false or nil is returned by this function will hide the bar element
 		icon = Material("path/to/your/icon.png", "smooth"), -- Icon material
 		text = function() -- if text set to false, nil or removed will only show the icon
 			return "My text goes here :)" -- Retur a sting of  your custom text
 		end
-	}
+	})
 ]]------------------------------------------------
 
-HUD.AnimatedBars[1] = {
+HUD.AddAnimatedBar({
 	icon_bg = MSD.Icons48.heart_outline,
 	icon = MSD.Icons48.heart,
 	max_icon = MSD.Icons48.heart_flash,
@@ -44,20 +76,38 @@ HUD.AnimatedBars[1] = {
 	value = function()
 		return LocalPlayer():Health() / LocalPlayer():GetMaxHealth()
 	end
-}
+})
 
-HUD.AnimatedBars[2] = {
+HUD.AddAnimatedBar({
 	icon_bg = MSD.Icons48.armor_outline,
 	icon = MSD.Icons48.armor,
 	max_icon = MSD.Icons48.armor_flash,
-	no_icon = MSD.Icons48.armor_broken,
+	--no_icon = MSD.Icons48.armor_broken,
 	smooth = 0,
 	value = function()
 		return LocalPlayer():Armor() / LocalPlayer():GetMaxArmor()
 	end
-}
+})
 
-HUD.TextBars[1] = {
+HUD.AddAnimatedBar({
+	check = function()
+		if DarkRP and LocalPlayer():getDarkRPVar("Energy") then
+			return true
+		end
+		return false
+	end,
+	icon_bg = MSD.Icons48.food_outline,
+	icon = MSD.Icons48.food,
+	max_icon = MSD.Icons48.food,
+	no_icon = MSD.Icons48.food_off,
+	no_text = false,
+	smooth = 0,
+	value = function()
+		return LocalPlayer():getDarkRPVar("Energy") / 100
+	end
+})
+
+HUD.AddTextBar({
 	check = function()
 		return DarkRP and true or false
 	end,
@@ -65,9 +115,9 @@ HUD.TextBars[1] = {
 	text = function()
 		return LocalPlayer():getDarkRPVar("job") or ""
 	end
-}
+})
 
-HUD.TextBars[2] = {
+HUD.AddTextBar({
 	check = function()
 		return DarkRP and true or false
 	end,
@@ -77,9 +127,9 @@ HUD.TextBars[2] = {
 		local sal = LocalPlayer():getDarkRPVar("salary") or 0
 		return string.Comma(money) .. "$" .. (sal > 0 and " + " .. string.Comma(sal) .. "$" or "")
 	end
-}
+})
 
-HUD.TextBars[3] = {
+HUD.AddTextBar({
 	check = function()
 		if DarkRP and LocalPlayer():getDarkRPVar("HasGunlicense") then
 			return true
@@ -87,34 +137,34 @@ HUD.TextBars[3] = {
 		return false
 	end,
 	icon = MSD.Icons48.file_document,
-}
+})
 
--- HUD.TextBars[4] = {
--- 	check = function()
--- 		if MRS and MRS.GetNWdata(LocalPlayer(), "Group") then
--- 			return true
--- 		end
--- 		return false
--- 	end,
--- 	icon = function()
--- 		local group = MRS.GetNWdata(LocalPlayer(), "Group")
--- 		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
--- 		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return MSD.Icons48.cansel end
--- 		if rank > 0 then
--- 			rank = MRS.Ranks[group].ranks[rank]
--- 		end
--- 		if rank ~= 0 and rank.icon[1] and rank.icon[1] ~= "" then
--- 			return MRS.GetRankIcon(rank.icon)
--- 		end
--- 		return MSD.Icons48.file_document
--- 	end,
--- 	text = function()
--- 		local group = MRS.GetNWdata(LocalPlayer(), "Group")
--- 		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
--- 		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return "None" end
--- 		return MRS.Ranks[group].ranks[rank].name
--- 	end
--- }
+HUD.AddTextBar({
+	check = function()
+		if MRS and MRS.GetNWdata(LocalPlayer(), "Group") then
+			return true
+		end
+		return false
+	end,
+	icon = function()
+		local group = MRS.GetNWdata(LocalPlayer(), "Group")
+		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
+		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return MSD.Icons48.cansel end
+		if rank > 0 then
+			rank = MRS.Ranks[group].ranks[rank]
+		end
+		if rank ~= 0 and rank.icon[1] and rank.icon[1] ~= "" then
+			return MRS.GetRankIcon(rank.icon)
+		end
+		return MSD.Icons48.file_document
+	end,
+	text = function()
+		local group = MRS.GetNWdata(LocalPlayer(), "Group")
+		local rank = MRS.GetNWdata(LocalPlayer(), "Rank")
+		if not MRS.Ranks[group] or not MRS.Ranks[group].ranks[rank] then return "None" end
+		return MRS.Ranks[group].ranks[rank].name
+	end
+})
 
 local blur = Material("pp/blurscreen")
 
@@ -153,11 +203,27 @@ function HUD.DrawBar(x, y)
 	HUD.DrawBG(x, y, HUD.BarSize, HUD.IconSize + 10)
 	draw.RoundedBoxEx(MSD.Config.Rounded, x, y, math.max(MSD.Config.Rounded, 5), HUD.IconSize + 10, MSD.Config.MainColor["p"], true, false, true, false)
 
-	for id, e in pairs(HUD.AnimatedBars) do
+	if MSD.Config.HUDShowIcon then
+		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, MSD.ImgLib.GetMaterial(MSD.Config.HUDIcon), color_white)
+		b = b + HUD.IconSize + 5
+		if MSD.Config.HUDText and MSD.Config.HUDText ~= "" then
+			b = b + 5 + draw.SimpleText( MSD.Config.HUDText, "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
+		end
+	end
+
+	for id, e in pairs(HUD.Bars) do
 		if e.check and not e.check() then continue end
 
-		local value = e.value()
+		if e.type == "text" then
+			MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, isfunction(e.icon) and e.icon() or e.icon, color_white)
+			b = b + HUD.IconSize + 5
+			if e.text then
+				b = b + 5 + draw.SimpleText( e.text(), "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
+			end
+			continue
+		end
 
+		local value = e.value()
 		if e.smooth then
 			e.smooth = math.Approach(e.smooth, value, FrameTime() * 2)
 			value = e.smooth
@@ -177,18 +243,11 @@ function HUD.DrawBar(x, y)
 			MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, e.no_icon, MSD.Text["a"])
 		end
 
-		if e.no_icon or value > 0 then
+		if ( e.no_icon or value > 0 ) then
 			b = b + HUD.IconSize + 5
-			b = b + 5 + math.max( draw.SimpleText( math.max(math.Round(value * 100), 0) .. "%", "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1), 45)
-		end
-	end
-
-	for id, e in pairs(HUD.TextBars) do
-		if e.check and not e.check() then continue end
-		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, isfunction(e.icon) and e.icon() or e.icon, color_white)
-		b = b + HUD.IconSize + 5
-		if e.text then
-			b = b + 5 + draw.SimpleText( e.text(), "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
+			if not e.no_text then
+				b = b + 5 + math.max( draw.SimpleText( math.max(math.Round(value * 100), 0) .. "%", "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1), 45)
+			end
 		end
 	end
 
@@ -197,6 +256,7 @@ end
 
 function HUD.DrawWeaponBar(x, y)
 	local wep = LocalPlayer():GetActiveWeapon()
+	HUD.WeaponBar = - HUD.IconSize
 	if not IsValid(wep) then return end
 	if LocalPlayer():InVehicle() then return end
 
@@ -221,6 +281,7 @@ function HUD.DrawWeaponBar(x, y)
 	MSD.DrawTexturedRect(x - b, iy, HUD.IconSize, HUD.IconSize, MSD.Icons48.magazine, MSD.Text["d"])
 
 	HUD.WepBarSize = b + 10
+	HUD.WeaponBar = 0
 end
 
 local notifications = {}
@@ -253,7 +314,17 @@ function notification.AddLegacy(text, type, time, id)
 	})
 end
 
-function notification.AddInventory(text, type, time)
+function notification.AddInventory(text, type, time, amount)
+	if type == "ammo" then
+		for k, v in pairs(inventory) do
+			if v.type ~= type then continue end
+			if v.text ~= text then continue end
+			v.amount = v.amount + amount
+			v.time = CurTime() + time
+			return
+		end
+	end
+
 	table.insert(inventory, {
 		x = ScrW(),
 		y = ScrH() - (20 + HUD.IconSize) * 2,
@@ -262,6 +333,7 @@ function notification.AddInventory(text, type, time)
 		s = sub,
 		progress = 0,
 		text = text,
+		amount = amount,
 		type = type,
 		time = CurTime() + time,
 	})
@@ -321,9 +393,8 @@ function HUD.DrawNotifications()
 	for k, v in ipairs(inventory) do
 		local is = math.max(MSD.Config.Rounded, 5)
 		local n_locor = note_style[v.type] and note_style[v.type].color or color_white
-
 		HUD.DrawBG(v.x - (v.progress * v.w) - 10, v.y - (k - 1) * (v.h + 5), v.w, v.h, v.progress)
-		v.w = draw.SimpleText( v.text, "MSDFont." .. HUD.FondSize, v.x - (v.progress * v.w) + 10 + HUD.IconSize - is, (v.y - (k - 1) * (v.h + 5)) + HUD.IconSize / 2 + 5, color_white, TEXT_ALIGN_LEFT, 1 ) + 25 + HUD.IconSize
+		v.w = draw.SimpleText( v.text .. " " .. (v.amount or ""), "MSDFont." .. HUD.FondSize, v.x - (v.progress * v.w) + 10 + HUD.IconSize - is, (v.y - (k - 1) * (v.h + 5)) + HUD.IconSize / 2 + 5, color_white, TEXT_ALIGN_LEFT, 1 ) + 25 + HUD.IconSize
 
 		if note_style[v.type] then
 			MSD.DrawTexturedRect(v.x - (v.progress * v.w) + 5 - is, (v.y - (k - 1) * (v.h + 5)) + 5, HUD.IconSize, HUD.IconSize, note_style[v.type].icon, note_style[v.type].color)
@@ -380,17 +451,17 @@ hook.Add("PostGamemodeLoaded", "MSD.HUD.PostGamemodeLoaded", function()
 	function GAMEMODE:HUDWeaponPickedUp(wep)
 		if not (IsValid(wep) and IsValid(LocalPlayer())) or (not LocalPlayer():Alive()) then return end
 		local name = wep.GetPrintName and wep:GetPrintName() or wep:GetClass() or "Unknown Weapon Name"
-		notification.AddInventory(name, "weapon", 5, true)
+		notification.AddInventory(name, "weapon", 5)
 	end
 
 	function GAMEMODE:HUDItemPickedUp(itemname)
 		if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
-		notification.AddInventory(language.GetPhrase(itemname), "item", 5, true)
+		notification.AddInventory(language.GetPhrase(itemname), "item", 5)
 	end
 
 	function GAMEMODE:HUDAmmoPickedUp(itemname, amount)
 		if (not IsValid(LocalPlayer()) or not LocalPlayer():Alive()) then return end
-		notification.AddInventory(language.GetPhrase(itemname .. "_ammo") .. " " .. amount, "ammo", 5, true)
+		notification.AddInventory(language.GetPhrase(itemname .. "_ammo"), "ammo", 5, amount)
 	end
 
 	function GAMEMODE.DrawDeathNotice()
