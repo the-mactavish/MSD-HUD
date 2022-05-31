@@ -201,13 +201,13 @@ function HUD.DrawBar(x, y)
 	local iy = y + 5
 
 	HUD.DrawBG(x, y, HUD.BarSize, HUD.IconSize + 10)
-	draw.RoundedBoxEx(MSD.Config.Rounded, x, y, math.max(MSD.Config.Rounded, 5), HUD.IconSize + 10, MSD.Config.MainColor["p"], true, false, true, false)
+	draw.RoundedBoxEx(MSD.Config.Rounded, x, y, math.max(MSD.Config.Rounded, 5), HUD.IconSize + 10, MSD.Config.TeamColor and team.GetColor(LocalPlayer():Team()) or MSD.Config.MainColor["p"], true, false, true, false)
 
-	if MSD.Config.HUDShowIcon then
-		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, MSD.ImgLib.GetMaterial(MSD.Config.HUDIcon), color_white)
+	if MSD.Config.HUD.ShowIcon then
+		MSD.DrawTexturedRect(x + b, iy, HUD.IconSize, HUD.IconSize, MSD.ImgLib.GetMaterial(MSD.Config.HUD.Icon), color_white)
 		b = b + HUD.IconSize + 5
-		if MSD.Config.HUDText and MSD.Config.HUDText ~= "" then
-			b = b + 5 + draw.SimpleText( MSD.Config.HUDText, "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
+		if MSD.Config.HUD.Text and MSD.Config.HUD.Text ~= "" then
+			b = b + 5 + draw.SimpleText( MSD.Config.HUD.Text, "MSDFont." .. HUD.FondSize, x + b, y + 5 + HUD.IconSize / 2, MSD.Text["l"], 0, 1)
 		end
 	end
 
@@ -270,7 +270,7 @@ function HUD.DrawWeaponBar(x, y)
 	local iy = y + 5
 
 	HUD.DrawBG(x - HUD.WepBarSize, y, HUD.WepBarSize, HUD.IconSize + 10)
-	draw.RoundedBoxEx(MSD.Config.Rounded, x - rb , y, rb, HUD.IconSize + 10, MSD.Config.MainColor["p"], false, true, false, true)
+	draw.RoundedBoxEx(MSD.Config.Rounded, x - rb , y, rb, HUD.IconSize + 10, MSD.Config.TeamColor and team.GetColor(LocalPlayer():Team()) or MSD.Config.MainColor["p"], false, true, false, true)
 
 	b = b + math.max( draw.SimpleText( maxammo, "MSDFont." .. HUD.FondSize, x - b, y + 5 + HUD.IconSize / 2, color_white, TEXT_ALIGN_RIGHT, 1 ), 35)
 	b = b + HUD.IconSize
@@ -282,6 +282,86 @@ function HUD.DrawWeaponBar(x, y)
 
 	HUD.WepBarSize = b + 10
 	HUD.WeaponBar = 0
+end
+
+function HUD.DrawBackGroud(x, y, w, h, ply)
+	alpha = alpha or 1
+	local rb = math.max(MSD.Config.Rounded, 5)
+
+	if MSD.Config.Blur then
+		draw.RoundedBoxEx(MSD.Config.Rounded, x, y, w, h, MSD.ColorAlpha(color_black, (250 - MSD.Config.BgrColor.r) * alpha), false, true, false, true)
+	else
+		local cl = MSD.Config.BgrColor
+		if MSD.Config.BgrColor.r > 70 then
+			cl = MSD.ColorAlpha(color_black, 255 - MSD.Config.BgrColor.r)
+		end
+		draw.RoundedBoxEx(MSD.Config.Rounded, x, y, w, h, MSD.ColorAlpha(cl, cl.a * alpha), false, true, false, true)
+	end
+
+	draw.RoundedBoxEx(MSD.Config.Rounded, x - rb, y, rb, h, MSD.Config.TeamColor and team.GetColor(ply:Team()) or MSD.Config.MainColor["p"], true, false, true, false)
+end
+
+function HUD.DrawPlayerInfo(ply, x, y, Config)
+	local w1, w2 = 0, 0
+	local is, fs, fss = Config.IconSize, math.Clamp(Config.FontSize, 12, 42), Config.ShowGroup and math.Clamp(Config.FontSize - 8, 12, 42) or 0
+	local ipos = Config.IconRight
+	local mh = math.max(is, fs + fss)
+
+	HUD.DrawBackGroud(x, y, ply.msdW, mh + 10, ply)
+
+	if Config.ShowGroup then
+		w2 = draw.SimpleTextOutlined(team.GetName(ply:Team()), "MSDFont." .. fss, ipos and 5 + x or x + 10 + is, y + fs / 2 + fss + 5, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
+	end
+
+	local grp = w2 > 0 and fs / 2 + 5 or (mh + 10) / 2
+	w1 = draw.SimpleTextOutlined(ply:Name(), "MSDFont." .. fs, ipos and 5 + x or x + 10 + is, y + grp, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
+
+	if not ply:IsBot() and MSD.ImgLib.GetAvatar(ply:SteamID64()) ~= "" then
+		MSD.DrawTexturedRect(ipos and x + ply.msdW - is - 5 or x + 5, y + 5 + (mh / 2 - is / 2), is, is, MSD.ImgLib.GetMaterial(MSD.ImgLib.GetAvatar(ply:SteamID64()), true), color_white)
+	else
+		MSD.DrawTexturedRect(ipos and x + ply.msdW - is - 5 or x + 5, y + 5 + (mh / 2 - is / 2), is, is, MSD.Icons48.account, color_white)
+	end
+
+	ply.msdW = math.max(w1, w2) + is + ( Config.HideName and 10 or 15 )
+end
+
+local rot = Angle(0, 0, 0)
+
+function HUD.HudPlayer(ply, Draw3D)
+	if ply == LocalPlayer() or ply:InVehicle() then return end
+	if ply.FAdmin_GetGlobal and ply:FAdmin_GetGlobal("FAdmin_cloaked") then return end
+	if ply:GetMaterial() == "models/effects/vol_light001" then return end
+
+	if not ply.msdW then ply.msdW = 0 end
+
+	if ply:GetPos():DistToSqr(LocalPlayer():GetPos()) > MSD.Config.HUD.Dist ^ 2 then return end
+
+	local pos = ply:GetShootPos()
+	pos.z = pos.z + (ply:Crouching() and 15 or 5)
+
+	if MSD.Config.HUD.Follow then
+		local pla = LocalPlayer():GetAngles()
+		rot = LerpAngle(FrameTime() * 7, rot, Angle(0, pla.y - 180, 0))
+	else
+		rot = Angle(0, 0, 0)
+	end
+
+	local ang = Angle(0, rot.y, 0)
+	ang:RotateAroundAxis(ang:Right(), -90)
+	ang:RotateAroundAxis(ang:Up(), 90)
+
+	local distx = 160 * MSD.Config.HUD.X
+	local disty = 400 * MSD.Config.HUD.Y
+	local x = distx
+	if MSD.Config.HUD.AlignX == 1 then
+		x = 80 - (distx + ply.mrsW / 2)
+	elseif MSD.Config.HUD.AlignX == 2 then
+		x = 0 - (distx + ply.mrsW)
+	end
+
+	cam.Start3D2D(pos, ang, 0.08)
+		HUD.DrawPlayerInfo(ply, x, 200 - disty, MSD.Config.HUD)
+	cam.End3D2D()
 end
 
 local notifications = {}
@@ -443,9 +523,18 @@ function HUD.UpdateHookInfo()
 	hook.Add("HUDShouldDraw", "MSD.HUD.HUDShouldDraw", function(name)
 		if hideElements[name] then return false end
 	end)
+
+	hook.Add( "HUDDrawTargetID", "MSD.HUD.HUDDrawTargetID", function()
+		return false
+	end)
 end
 
 HUD.UpdateHookInfo()
+
+hook.Add("PostPlayerDraw", "MSD.HUD.PostPlayerDraw", function(ply)
+	--if not MRS.Config.Is2d3d then return end
+	HUD.HudPlayer(ply)
+end)
 
 hook.Add("PostGamemodeLoaded", "MSD.HUD.PostGamemodeLoaded", function()
 	function GAMEMODE:HUDWeaponPickedUp(wep)
