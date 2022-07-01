@@ -354,9 +354,9 @@ function HUD.HudPlayer(ply, Draw3D)
 	local disty = 400 * MSD.Config.HUD.Y
 	local x = distx
 	if MSD.Config.HUD.AlignX == 1 then
-		x = 80 - (distx + ply.mrsW / 2)
+		x = 80 - (distx + ply.msdW / 2)
 	elseif MSD.Config.HUD.AlignX == 2 then
-		x = 0 - (distx + ply.mrsW)
+		x = 0 - (distx + ply.msdW)
 	end
 
 	cam.Start3D2D(pos, ang, 0.08)
@@ -532,7 +532,6 @@ end
 HUD.UpdateHookInfo()
 
 hook.Add("PostPlayerDraw", "MSD.HUD.PostPlayerDraw", function(ply)
-	--if not MRS.Config.Is2d3d then return end
 	HUD.HudPlayer(ply)
 end)
 
